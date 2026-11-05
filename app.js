@@ -25,6 +25,14 @@ navReopen.addEventListener("click", () => {
 
 if (window.matchMedia("(max-width: 680px)").matches) setNavigationCollapsed(true);
 
+const themeToggle = document.querySelector("#theme-toggle");
+themeToggle.addEventListener("click", () => {
+  const isDark = document.body.classList.toggle("dark-mode");
+  themeToggle.setAttribute("aria-pressed", String(isDark));
+  themeToggle.setAttribute("aria-label", isDark ? "Hellmodus einschalten" : "Dunkelmodus einschalten");
+  themeToggle.title = isDark ? "Hellmodus einschalten" : "Dunkelmodus einschalten";
+});
+
 function addSong(song, index) {
   const songId = `song-${index + 1}`;
   const item = document.createElement("li");
