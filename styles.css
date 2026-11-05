@@ -64,10 +64,11 @@ button, input { font: inherit; }
 .admin-link:hover { color: var(--red); }
 
 main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
-.page-controls { display: flex; justify-content: flex-end; padding-top: 16px; }
-.theme-toggle { min-height: 36px; padding: 0 11px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); color: var(--ink); font-size: 11px; font-weight: 600; cursor: pointer; }
+.page-heading-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.page-heading-row h1 { min-width: 0; }
+.theme-toggle { display: grid; flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; padding: 8px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--white); color: var(--ink); cursor: pointer; }
 .theme-toggle:hover { border-color: #9baa9d; background: var(--leaf); }
-.theme-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.theme-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .theme-icon-light { display: none; }
 .dark-mode .theme-icon-dark { display: none; }
 .dark-mode .theme-icon-light { display: block; }
@@ -226,10 +227,9 @@ h1, h2, p { margin-top: 0; }
   .wordmark-mark { width: 27px; height: 27px; }
   .admin-link { gap: 5px; font-size: 11px; }
   main { width: calc(100% - 32px); }
-  .page-controls { padding-top: 10px; }
-  .theme-toggle { min-height: 34px; }
-  .page-heading { padding: 14px 0 14px; }
-  .page-heading h1 { margin-top: 8px; font-size: clamp(34px, 9vw, 40px); }
+  .page-heading { padding: 18px 0 14px; }
+  .page-heading-row h1 { margin-top: 8px; font-size: clamp(34px, 9vw, 40px); }
+  .theme-toggle { margin-top: 7px; }
   .heading-location { margin-top: 7px; font-size: 13px; }
   .songbook { height: calc(100dvh - 220px); min-height: 320px; grid-template-columns: 184px minmax(0, 1fr); }
   .songbook.is-nav-collapsed { grid-template-columns: 46px minmax(0, 1fr); }
