@@ -39,6 +39,9 @@ function addSong(song, index) {
   const link = document.createElement("a");
   link.className = "song-link";
   link.href = `#${songId}`;
+  link.addEventListener("click", () => {
+    setNavigationCollapsed(true);
+  });
 
   const number = document.createElement("span");
   number.className = "song-number";
