@@ -3,21 +3,35 @@ const songList = document.querySelector("#song-list");
 const songContent = document.querySelector("#song-content");
 const emptyState = document.querySelector("#empty-state");
 const loadingState = document.querySelector("#loading-state");
+const songbook = document.querySelector(".songbook");
+const navToggle = document.querySelector("#nav-toggle");
+const navReopen = document.querySelector("#nav-reopen");
 
-document.querySelector("#nav-toggle").addEventListener("click", () => {
-  songNav.classList.add("is-collapsed");
-  document.querySelector(".songbook").classList.add("is-nav-collapsed");
-  document.querySelector("#nav-toggle").setAttribute("aria-expanded", "false");
-  document.querySelector("#nav-toggle").hidden = true;
-  document.querySelector("#nav-reopen").hidden = false;
+function setNavigationCollapsed(collapsed) {
+  songNav.classList.toggle("is-collapsed", collapsed);
+  songbook.classList.toggle("is-nav-collapsed", collapsed);
+  navToggle.setAttribute("aria-expanded", String(!collapsed));
+  navToggle.hidden = collapsed;
+  navReopen.hidden = !collapsed;
+}
+
+navToggle.addEventListener("click", () => {
+  setNavigationCollapsed(true);
 });
 
-document.querySelector("#nav-reopen").addEventListener("click", () => {
-  songNav.classList.remove("is-collapsed");
-  document.querySelector(".songbook").classList.remove("is-nav-collapsed");
-  document.querySelector("#nav-toggle").setAttribute("aria-expanded", "true");
-  document.querySelector("#nav-toggle").hidden = false;
-  document.querySelector("#nav-reopen").hidden = true;
+navReopen.addEventListener("click", () => {
+  setNavigationCollapsed(false);
+});
+
+if (window.matchMedia("(max-width: 680px)").matches) setNavigationCollapsed(true);
+
+const themeToggle = document.querySelector("#theme-toggle");
+const themeToggleLabel = document.querySelector("#theme-toggle-label");
+themeToggle.addEventListener("click", () => {
+  const isDark = document.body.classList.toggle("dark-mode");
+  themeToggle.setAttribute("aria-pressed", String(isDark));
+  themeToggle.setAttribute("aria-label", isDark ? "Hellmodus einschalten" : "Dunkelmodus einschalten");
+  themeToggleLabel.textContent = isDark ? "Hellmodus" : "Dunkelmodus";
 });
 
 function addSong(song, index) {

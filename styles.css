@@ -64,7 +64,14 @@ button, input { font: inherit; }
 .admin-link:hover { color: var(--red); }
 
 main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
-.page-heading { padding: 52px 0 34px; }
+.page-controls { display: flex; justify-content: flex-end; padding-top: 16px; }
+.theme-toggle { min-height: 36px; padding: 0 11px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); color: var(--ink); font-size: 11px; font-weight: 600; cursor: pointer; }
+.theme-toggle:hover { border-color: #9baa9d; background: var(--leaf); }
+.theme-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.theme-icon-light { display: none; }
+.dark-mode .theme-icon-dark { display: none; }
+.dark-mode .theme-icon-light { display: block; }
+.page-heading { padding: 24px 0 20px; }
 .eyebrow, .section-label {
   margin: 0;
   color: var(--forest);
@@ -79,7 +86,7 @@ h1, h2, p { margin-top: 0; }
 .page-heading h1, .admin-heading h1 {
   margin: 17px 0 5px;
   font-family: var(--serif);
-  font-size: clamp(42px, 5vw, 62px);
+  font-size: clamp(38px, 4.5vw, 52px);
   font-weight: 500;
   letter-spacing: 0;
   line-height: .99;
@@ -146,7 +153,38 @@ h1, h2, p { margin-top: 0; }
 .footer-links a:hover { color: var(--red); }
 .footer-upload { min-height: 36px; }
 
+.dark-mode {
+  color-scheme: dark;
+  --forest: #a9c8b0;
+  --forest-deep: #d3e2d5;
+  --leaf: #2a3a31;
+  --paper: #121916;
+  --white: #1b2420;
+  --ink: #e7eee9;
+  --muted: #a3afa7;
+  --line: #354139;
+  --red: #e18b7e;
+}
+.dark-mode .songbook { border-color: var(--line); }
+.dark-mode .song-nav { background: #1a241f; }
+.dark-mode .song-link { color: #d1ddd4; }
+.dark-mode .song-link:hover, .dark-mode .song-link:focus-visible { background: #29372f; color: #f0f5f0; }
+.dark-mode .song-number { color: #a2b0a6; }
+.dark-mode .icon-button { color: #c1cec5; }
+.dark-mode .icon-button:hover, .dark-mode .theme-toggle:hover { background: #2a3a31; }
+.dark-mode .document-toolbar { border-color: var(--line); }
+.dark-mode .document-icon { border-color: var(--line); }
+.dark-mode .song-display { background: #151d19; }
+.dark-mode .song-card p { color: #d6dfd8; }
+.dark-mode .heading-location { color: #b0bbb3; }
+.dark-mode .empty-mark { border-color: #3b4b40; }
+.dark-mode .empty-state p { color: #b0bbb3; }
+.dark-mode .site-footer { color: #a3afa7; }
+
 .admin-main { max-width: 790px; padding: 45px 0 64px; }
+.admin-warning { padding: 16px 18px; margin-bottom: 24px; border: 1px solid #e2c47e; border-left: 4px solid #c28d20; border-radius: 4px; background: #fff7df; color: #594514; font-size: 12px; line-height: 1.65; }
+.admin-warning strong { display: block; margin-bottom: 5px; font-size: 13px; }
+.admin-warning p { margin: 0; }
 .legal-main { max-width: 790px; min-height: calc(100vh - 160px); padding: 45px 0 64px; }
 .legal-content { padding-top: 24px; border-top: 1px solid var(--line); color: #505b53; font-size: 13px; line-height: 1.8; }
 .legal-content h2 { margin: 0 0 9px; color: var(--ink); font-size: 15px; }
@@ -188,9 +226,12 @@ h1, h2, p { margin-top: 0; }
   .wordmark-mark { width: 27px; height: 27px; }
   .admin-link { gap: 5px; font-size: 11px; }
   main { width: calc(100% - 32px); }
-  .page-heading { padding: 38px 0 25px; }
-  .page-heading h1 { font-size: 46px; }
-  .songbook { height: calc(100dvh - 315px); min-height: 390px; grid-template-columns: 184px minmax(0, 1fr); }
+  .page-controls { padding-top: 10px; }
+  .theme-toggle { min-height: 34px; }
+  .page-heading { padding: 14px 0 14px; }
+  .page-heading h1 { margin-top: 8px; font-size: clamp(34px, 9vw, 40px); }
+  .heading-location { margin-top: 7px; font-size: 13px; }
+  .songbook { height: calc(100dvh - 220px); min-height: 320px; grid-template-columns: 184px minmax(0, 1fr); }
   .songbook.is-nav-collapsed { grid-template-columns: 46px minmax(0, 1fr); }
   .nav-topline { padding: 0 10px 0 14px; }
   .nav-caption { padding: 14px 13px 8px; font-size: 10px; }
@@ -202,10 +243,11 @@ h1, h2, p { margin-top: 0; }
   .document-icon { width: 29px; height: 29px; }
   .document-title strong { max-width: 28vw; font-size: 10px; }
   .document-title small { font-size: 9px; }
-  .song-content { padding: 5px 18px 24px; }
-  .song-card { padding: 19px 0; }
-  .song-card h2 { font-size: 21px; }
-  .song-card p { font-size: 12px; }
+  .song-content { padding: 5px 12px 24px; }
+  .song-card { padding: 17px 0; }
+  .song-card h2 { margin-bottom: 14px; font-size: 21px; }
+  .song-card p { font-size: 15px; line-height: 1.75; }
+  .song-card p.song-stanza { margin-bottom: 20px; }
   .empty-state h2 { font-size: 19px; }
   .empty-state p { font-size: 11px; }
   .site-footer { width: calc(100% - 32px); gap: 14px; font-size: 9px; }
