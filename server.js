@@ -4,19 +4,16 @@ const http = require("node:http");
 const path = require("node:path");
 
 const ROOT = __dirname;
-const UPLOADS = path.join(ROOT, "uploads");
-const DOCUMENT_PATH = path.join(UPLOADS, "liedzettel.pdf");
-const LIBRARY_PATH = path.join(UPLOADS, "library.json");
-const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const TEXTS = path.join(ROOT, "texte");
 const PORT = Number(process.env.PORT) || 4173;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const PUBLIC_FILES = new Set(["index.html", "impressum.html", "datenschutz.html", "admin.html", "app.js", "admin.js", "styles.css"]);
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".pdf": "application/pdf",
 };
 
 function sendJson(response, status, value) {
@@ -56,112 +53,27 @@ function requireAdmin(request, response) {
   return true;
 }
 
-function readBody(request, limit) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    let tooLarge = false;
-
-    request.on("data", (chunk) => {
-      size += chunk.length;
-      if (size > limit) {
-        tooLarge = true;
-        chunks.length = 0;
-        return;
-      }
-      if (!tooLarge) chunks.push(chunk);
-    });
-    request.on("end", () => {
-      if (tooLarge) {
-        reject(Object.assign(new Error("Datei zu groß"), { status: 413 }));
-      } else {
-        resolve(Buffer.concat(chunks));
-      }
-    });
-    request.on("error", reject);
-  });
-}
-
-async function saveJsonAtomically(filePath, data) {
-  const temporaryPath = `${filePath}.${process.pid}.tmp`;
-  await fs.writeFile(temporaryPath, JSON.stringify(data, null, 2), "utf8");
-  await fs.rename(temporaryPath, filePath);
-}
-
 async function handleApi(request, response, url) {
-  if (url.pathname === "/api/library" && request.method === "GET") {
+  if (url.pathname === "/api/songs" && request.method === "GET") {
     try {
-      const library = JSON.parse(await fs.readFile(LIBRARY_PATH, "utf8"));
-      sendJson(response, 200, library);
+      await fs.mkdir(TEXTS, { recursive: true });
+      const entries = await fs.readdir(TEXTS, { withFileTypes: true });
+      const files = entries
+        .filter((entry) => entry.isFile() && path.extname(entry.name).toLowerCase() === ".txt")
+        .sort((a, b) => a.name.localeCompare(b.name, "de"));
+      const songs = (await Promise.all(files.map(async (file) => {
+        const contents = await fs.readFile(path.join(TEXTS, file.name), "utf8");
+        const lines = contents.replace(/^\uFEFF/, "").split(/\r?\n/);
+        const titleLine = lines.findIndex((line) => line.trim());
+        if (titleLine < 0) return null;
+        const title = lines[titleLine].trim();
+        const text = lines.slice(titleLine + 1).join("\n").trim();
+        return text ? { title, text } : null;
+      }))).filter(Boolean);
+      sendJson(response, 200, { songs });
     } catch (error) {
-      sendJson(response, error.code === "ENOENT" ? 404 : 500, { error: "Liedzettel nicht gefunden." });
-    }
-    return;
-  }
-
-  if (url.pathname === "/api/library/document" && request.method === "PUT") {
-    if (!requireAdmin(request, response)) return;
-    if (!request.headers["content-type"]?.startsWith("application/pdf")) {
-      sendJson(response, 415, { error: "Erwartet wird eine PDF-Datei." });
-      return;
-    }
-
-    try {
-      const contentLength = Number(request.headers["content-length"] || 0);
-      if (contentLength > MAX_FILE_SIZE) {
-        sendJson(response, 413, { error: "Die PDF-Datei darf höchstens 30 MB groß sein." });
-        request.resume();
-        return;
-      }
-      const pdf = await readBody(request, MAX_FILE_SIZE);
-      if (pdf.length < 5 || pdf.subarray(0, 5).toString("ascii") !== "%PDF-") {
-        sendJson(response, 400, { error: "Die ausgewählte Datei ist keine gültige PDF-Datei." });
-        return;
-      }
-      await fs.mkdir(UPLOADS, { recursive: true });
-      const temporaryPath = `${DOCUMENT_PATH}.${process.pid}.tmp`;
-      await fs.writeFile(temporaryPath, pdf);
-      await fs.rename(temporaryPath, DOCUMENT_PATH);
-      sendJson(response, 200, { ok: true });
-    } catch (error) {
-      sendJson(response, error.status || 500, { error: error.status === 413 ? "Die PDF-Datei darf höchstens 30 MB groß sein." : "PDF-Upload fehlgeschlagen." });
-    }
-    return;
-  }
-
-  if (url.pathname === "/api/library" && request.method === "PUT") {
-    if (!requireAdmin(request, response)) return;
-
-    try {
-      const body = await readBody(request, 1024 * 256);
-      const input = JSON.parse(body.toString("utf8"));
-      const hasDocument = await fs.stat(DOCUMENT_PATH).then(() => true, () => false);
-      if (!hasDocument) {
-        sendJson(response, 400, { error: "Bitte lade zuerst eine PDF-Datei hoch." });
-        return;
-      }
-      if (typeof input.fileName !== "string" || !input.fileName.trim() || !Array.isArray(input.songs)) {
-        sendJson(response, 400, { error: "Dateiname oder Liedliste fehlen." });
-        return;
-      }
-
-      const songs = input.songs.map((song) => ({ title: String(song.title || "").trim(), page: Number(song.page) }));
-      if (songs.some((song) => !song.title || !Number.isInteger(song.page) || song.page < 1)) {
-        sendJson(response, 400, { error: "Jedes Lied benötigt einen Titel und eine gültige Seitenzahl." });
-        return;
-      }
-
-      const library = {
-        fileName: path.basename(input.fileName).slice(0, 120),
-        pdfUrl: "/uploads/liedzettel.pdf",
-        songs,
-        updatedAt: new Date().toISOString(),
-      };
-      await fs.mkdir(UPLOADS, { recursive: true });
-      await saveJsonAtomically(LIBRARY_PATH, library);
-      sendJson(response, 200, library);
-    } catch (error) {
-      sendJson(response, error.status || 400, { error: "Liedliste konnte nicht gespeichert werden." });
+      console.error("Liedtexte konnten nicht geladen werden:", error);
+      sendJson(response, 500, { error: "Liedtexte konnten nicht geladen werden." });
     }
     return;
   }
@@ -185,8 +97,15 @@ async function handleRequest(request, response) {
     return;
   }
 
-  if ((decodedPath === "/admin.html" || decodedPath === "/admin.js") && !requireAdmin(request, response)) return;
   const relativePath = decodedPath === "/" ? "index.html" : decodedPath.replace(/^\/+/, "");
+  const isSongText = path.dirname(relativePath) === "texte" && path.extname(relativePath).toLowerCase() === ".txt";
+  const isSongManifest = relativePath === "texte/songs.json";
+  const isSongCatalog = relativePath === "texte/songs.js";
+  if (!PUBLIC_FILES.has(relativePath) && !isSongText && !isSongManifest && !isSongCatalog) {
+    response.writeHead(404).end("Datei nicht gefunden.");
+    return;
+  }
+  if ((relativePath === "admin.html" || relativePath === "admin.js") && !requireAdmin(request, response)) return;
   const filePath = path.resolve(ROOT, relativePath);
   if (!filePath.startsWith(`${ROOT}${path.sep}`)) {
     response.writeHead(403).end("Zugriff verweigert.");

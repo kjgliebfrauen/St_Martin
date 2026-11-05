@@ -4,11 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#173d35">
-    <title>Verwaltung · St. Martinszug Bochum-Linden</title>
+    <title>Lieder hochladen · St. Martinszug Bochum-Linden</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
     <script src="admin.js" defer></script>
   </head>
   <body class="admin-page">
@@ -25,45 +26,44 @@
 
     <main class="admin-main">
       <section class="admin-heading">
-        <p class="eyebrow"><span class="eyebrow-dot"></span> Website-Verwaltung</p>
-        <h1>Liedzettel<br><span>aktualisieren</span></h1>
-        <p>PDF hochladen und die Lieder mit ihren Seitenzahlen für die Übersicht eintragen.</p>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Geschützter Upload</p>
+        <h1>Lieder aus<br><span>PDF trennen</span></h1>
+        <p>Wähle einen Liedzettel aus. Die Seite erkennt größere, fette Überschriften und bereitet jedes Lied als eigene Textdatei zum Herunterladen vor.</p>
       </section>
 
-      <form class="admin-form" id="admin-form">
-        <section class="form-section">
-          <div class="form-section-heading">
-            <span class="step-number">01</span>
-            <div><h2>PDF-Dokument</h2><p>Der neue Liedzettel ersetzt die bisherige Datei.</p></div>
-          </div>
-          <label class="upload-zone" for="pdf-upload" id="upload-zone">
-            <input id="pdf-upload" name="pdf" type="file" accept="application/pdf,.pdf">
-            <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4 4 4M5 15v4h14v-4"/></svg></span>
-            <span class="upload-copy"><strong id="file-label">PDF-Datei auswählen</strong><small>PDF, maximal 30 MB</small></span>
-            <span class="upload-action">Durchsuchen</span>
-          </label>
-          <p class="current-file" id="current-file" hidden></p>
-        </section>
-
-        <section class="form-section songs-section">
-          <div class="form-section-heading">
-            <span class="step-number">02</span>
-            <div><h2>Liederübersicht</h2><p>Trage den Liedtitel und die erste PDF-Seite ein.</p></div>
-          </div>
-          <div class="song-fields-head" aria-hidden="true"><span>Liedtitel</span><span>PDF-Seite</span><span></span></div>
-          <div class="admin-song-list" id="admin-song-list"></div>
-          <button class="add-song-button" id="add-song" type="button"><span aria-hidden="true">+</span> Lied hinzufügen</button>
-        </section>
-
+      <section class="form-section">
+        <div class="form-section-heading">
+          <span class="step-number">01</span>
+          <div><h2>PDF-Dokument auswählen</h2><p>Textbasierte PDFs bis maximal 30 MB. Gescannte Bilder können nicht automatisch erkannt werden.</p></div>
+        </div>
+        <label class="upload-zone" for="pdf-upload" id="upload-zone">
+          <input id="pdf-upload" name="pdf" type="file" accept="application/pdf,.pdf">
+          <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4 4 4M5 15v4h14v-4"/></svg></span>
+          <span class="upload-copy"><strong id="file-label">PDF-Datei auswählen</strong><small>PDF, maximal 30 MB</small></span>
+          <span class="upload-action">Durchsuchen</span>
+        </label>
         <div class="form-actions">
           <p class="save-message" id="save-message" role="status" aria-live="polite"></p>
-          <button class="button button-primary" type="submit">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4.75h12l2 2v12.5H5a1 1 0 0 1-1-1V5.75a1 1 0 0 1 1-1Z"/><path d="M8 4.75v5h8v-5M8 19v-6h8v6"/></svg>
-            Änderungen speichern
-          </button>
+          <button class="button button-primary" id="process-pdf" type="button" disabled>Lieder erkennen</button>
         </div>
-        <p class="storage-note">Die Datei wird auf dem Website-Server gespeichert und ist anschließend für alle Besucher verfügbar.</p>
-      </form>
+      </section>
+
+      <section class="form-section extracted-section" id="extracted-section" hidden>
+        <div class="form-section-heading">
+          <span class="step-number">02</span>
+          <div><h2>Erkannte Lieder</h2><p>Lade die einzelnen Textdateien herunter, kopiere sie in <code>texte</code> und starte danach <code>aktualisiere-lieder.bat</code>.</p></div>
+        </div>
+        <ol class="extracted-songs" id="song-results"></ol>
+      </section>
+
+      <p class="storage-note">Die PDF wird nur in deinem Browser verarbeitet und nicht auf den Server hochgeladen. Die Liedübersicht auf der Startseite entsteht aus den Dateien in <code>texte/</code>.</p>
     </main>
+    <footer class="site-footer">
+      <span>Ökumenischer St. Martinszug · Bochum-Linden</span>
+      <nav class="footer-links" aria-label="Rechtliche Informationen">
+        <a href="impressum.html">Impressum</a>
+        <a href="datenschutz.html">Datenschutz</a>
+      </nav>
+    </footer>
   </body>
 </html>

@@ -1,138 +1,198 @@
 const MAX_FILE_SIZE = 30 * 1024 * 1024;
-let savedLibrary = null;
-let selectedFile = null;
-
-async function getLibrary() {
-  const response = await fetch("/api/library");
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error("Die Liedliste konnte nicht geladen werden.");
-  return response.json();
-}
-
-const form = document.querySelector("#admin-form");
-const songRows = document.querySelector("#admin-song-list");
-const saveMessage = document.querySelector("#save-message");
+const PDFJS_VERSION = "3.11.174";
 const fileInput = document.querySelector("#pdf-upload");
-
-function createSongRow(song = {}) {
-  const row = document.createElement("div");
-  row.className = "song-fields-row";
-
-  const title = document.createElement("input");
-  title.type = "text";
-  title.name = "song-title";
-  title.placeholder = "z. B. Sankt Martin, Sankt Martin";
-  title.value = song.title || "";
-  title.setAttribute("aria-label", "Liedtitel");
-
-  const page = document.createElement("input");
-  page.type = "number";
-  page.name = "song-page";
-  page.min = "1";
-  page.placeholder = "1";
-  page.value = song.page || "";
-  page.setAttribute("aria-label", "PDF-Seite");
-
-  const remove = document.createElement("button");
-  remove.className = "icon-button remove-song";
-  remove.type = "button";
-  remove.setAttribute("aria-label", "Lied entfernen");
-  remove.title = "Lied entfernen";
-  remove.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 7h14M10 11v6m4-6v6M7 7l1 13h8l1-13M9 7V4h6v3"/></svg>';
-  remove.addEventListener("click", () => row.remove());
-
-  row.append(title, page, remove);
-  songRows.append(row);
-}
-
-function collectSongs() {
-  return [...songRows.querySelectorAll(".song-fields-row")]
-    .map((row) => ({
-      title: row.querySelector('[name="song-title"]').value.trim(),
-      page: Number(row.querySelector('[name="song-page"]').value),
-    }))
-    .filter((song) => song.title && Number.isInteger(song.page) && song.page > 0);
-}
+const processButton = document.querySelector("#process-pdf");
+const saveMessage = document.querySelector("#save-message");
+const songResults = document.querySelector("#song-results");
+let selectedFile = null;
+let extractedSongs = [];
 
 fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0];
-  if (!file) return;
+  selectedFile = fileInput.files[0] || null;
+  extractedSongs = [];
+  songResults.replaceChildren();
+  document.querySelector("#extracted-section").hidden = true;
+  processButton.disabled = !selectedFile;
   saveMessage.textContent = "";
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    saveMessage.textContent = "Bitte wähle eine PDF-Datei aus.";
-    fileInput.value = "";
-    return;
-  }
-  if (file.size > MAX_FILE_SIZE) {
-    saveMessage.textContent = "Die PDF-Datei darf höchstens 30 MB groß sein.";
-    fileInput.value = "";
-    return;
-  }
-  selectedFile = file;
-  document.querySelector("#file-label").textContent = file.name;
-  document.querySelector("#upload-zone").classList.add("has-file");
-});
+  document.querySelector("#upload-zone").classList.toggle("has-file", Boolean(selectedFile));
+  document.querySelector("#file-label").textContent = selectedFile?.name || "PDF-Datei auswählen";
 
-document.querySelector("#add-song").addEventListener("click", () => createSongRow());
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  saveMessage.textContent = "";
-
-  if (!selectedFile && !savedLibrary) {
-    saveMessage.textContent = "Bitte wähle zuerst eine PDF-Datei aus.";
-    fileInput.focus();
-    return;
-  }
-
-  try {
-    const songs = collectSongs();
-    if (selectedFile) {
-      const uploadResponse = await fetch("/api/library/document", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/pdf",
-          "X-File-Name": encodeURIComponent(selectedFile.name),
-        },
-        body: selectedFile,
-      });
-      if (!uploadResponse.ok) throw new Error("PDF-Upload fehlgeschlagen.");
-    }
-    const response = await fetch("/api/library", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName: selectedFile?.name || savedLibrary.fileName, songs }),
-    });
-    if (!response.ok) throw new Error("Speichern fehlgeschlagen.");
-    savedLibrary = await getLibrary();
-    selectedFile = null;
-    document.querySelector("#current-file").textContent = `Aktuell veröffentlicht: ${savedLibrary.fileName}`;
-    document.querySelector("#current-file").hidden = false;
-    saveMessage.textContent = "Liedzettel wurde gespeichert.";
-  } catch (error) {
-    if (error instanceof TypeError) {
-      saveMessage.textContent = "Der Server ist nicht erreichbar. Starte die Website über den Projektserver.";
-      return;
-    }
-    saveMessage.textContent = "Speichern fehlgeschlagen. Prüfe den verfügbaren Speicherplatz.";
+  if (!selectedFile) return;
+  if (selectedFile.type !== "application/pdf" && !selectedFile.name.toLowerCase().endsWith(".pdf")) {
+    showError("Bitte wähle eine PDF-Datei aus.");
+    resetFile();
+  } else if (selectedFile.size > MAX_FILE_SIZE) {
+    showError("Die PDF-Datei darf höchstens 30 MB groß sein.");
+    resetFile();
   }
 });
 
-async function loadAdmin() {
-  try {
-    savedLibrary = await getLibrary();
-    if (!savedLibrary) {
-      createSongRow();
-      return;
-    }
-    document.querySelector("#current-file").textContent = `Aktuell veröffentlicht: ${savedLibrary.fileName}`;
-    document.querySelector("#current-file").hidden = false;
-    document.querySelector("#file-label").textContent = "Neue PDF-Datei auswählen";
-    savedLibrary.songs.forEach(createSongRow);
-    if (!savedLibrary.songs.length) createSongRow();
-  } catch {
-    saveMessage.textContent = "Die Liedliste konnte nicht vom Server geladen werden.";
-  }
+function showError(message) {
+  saveMessage.textContent = message;
+  saveMessage.classList.add("is-error");
 }
 
-loadAdmin();
+function resetFile() {
+  selectedFile = null;
+  fileInput.value = "";
+  processButton.disabled = true;
+  document.querySelector("#upload-zone").classList.remove("has-file");
+  document.querySelector("#file-label").textContent = "PDF-Datei auswählen";
+}
+
+function getTextSize(item) {
+  return Math.abs(item.transform?.[3] || item.height || 0);
+}
+
+function getFontName(item, styles) {
+  return `${item.fontName || ""} ${styles[item.fontName]?.fontFamily || ""}`;
+}
+
+function isBold(item, styles) {
+  return /bold|black|heavy|demi|semibold/i.test(getFontName(item, styles));
+}
+
+function getPageLines(textContent) {
+  const styles = textContent.styles || {};
+  const items = textContent.items
+    .filter((item) => typeof item.str === "string" && item.str.trim())
+    .map((item) => ({
+      item,
+      x: item.transform?.[4] || 0,
+      y: item.transform?.[5] || 0,
+      size: getTextSize(item),
+      bold: isBold(item, styles),
+    }))
+    .sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines = [];
+
+  for (const positioned of items) {
+    let line = lines.find((candidate) => Math.abs(candidate.y - positioned.y) <= 2.5);
+    if (!line) {
+      line = { y: positioned.y, items: [] };
+      lines.push(line);
+    }
+    line.items.push(positioned);
+  }
+
+  return lines
+    .map((line) => {
+      line.items.sort((a, b) => a.x - b.x);
+      let text = "";
+      let previousRight = null;
+      let sizeTotal = 0;
+      let charCount = 0;
+      let boldChars = 0;
+      for (const part of line.items) {
+        const value = part.item.str;
+        if (previousRight !== null && part.x - previousRight > Math.max(1, part.size * 0.15)) text += " ";
+        text += value;
+        previousRight = part.x + (part.item.width || 0);
+        sizeTotal += part.size * value.length;
+        charCount += value.length;
+        if (part.bold) boldChars += value.length;
+      }
+      return {
+        text: text.replace(/[ \t]+/g, " ").trim(),
+        size: charCount ? sizeTotal / charCount : 0,
+        bold: charCount > 0 && boldChars / charCount >= 0.5,
+        y: line.y,
+      };
+    })
+    .filter((line) => line.text)
+    .sort((a, b) => b.y - a.y);
+}
+
+async function extractSongs(file) {
+  if (!window.pdfjsLib) throw new Error("Die PDF-Erkennung konnte nicht geladen werden. Prüfe deine Internetverbindung und lade die Seite erneut.");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+  const document = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const lines = [];
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    lines.push(...getPageLines(await page.getTextContent()), { text: "", size: 0, bold: false });
+  }
+
+  const sizes = lines.filter((line) => line.text && line.size > 0).map((line) => line.size).sort((a, b) => a - b);
+  const medianSize = sizes.length ? sizes[Math.floor(sizes.length / 2)] : 0;
+  const headingSize = Math.max(medianSize * 1.16, medianSize + 1);
+  function splitSongs(isHeading) {
+    const songs = [];
+    let currentSong = null;
+    for (const line of lines) {
+      if (!line.text) continue;
+      if (isHeading(line)) {
+        currentSong = { title: line.text, lines: [] };
+        songs.push(currentSong);
+      } else if (currentSong) {
+        currentSong.lines.push(line.text);
+      }
+    }
+    return songs.map((song) => ({ title: song.title, text: song.lines.join("\n").trim() })).filter((song) => song.text);
+  }
+
+  const isLargeHeading = (line) => line.size >= headingSize && line.text.length <= 120;
+  const boldSongs = splitSongs((line) => line.bold && isLargeHeading(line));
+  return boldSongs.length ? boldSongs : splitSongs(isLargeHeading);
+}
+
+function safeFilename(title, index) {
+  const name = title
+    .normalize("NFC")
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+    .replace(/[. ]+$/g, "")
+    .trim();
+  return `${String(index + 1).padStart(2, "0")} - ${name || "lied"}.txt`;
+}
+
+function downloadFile(fileName, contents, type) {
+  const url = URL.createObjectURL(new Blob([contents], { type }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function addSongDownload(song, index) {
+  const item = document.createElement("li");
+  item.className = "extracted-song";
+  const description = document.createElement("span");
+  description.textContent = `${String(index + 1).padStart(2, "0")} · ${song.title}`;
+  const download = document.createElement("button");
+  download.className = "button button-secondary";
+  download.type = "button";
+  download.textContent = "TXT herunterladen";
+  download.addEventListener("click", () => {
+    const contents = `${song.title}\n\n${song.text}\n`;
+    downloadFile(safeFilename(song.title, index), contents, "text/plain;charset=utf-8");
+  });
+  item.append(description, download);
+  songResults.append(item);
+}
+
+processButton.addEventListener("click", async () => {
+  if (!selectedFile) return;
+  processButton.disabled = true;
+  processButton.textContent = "PDF wird ausgewertet …";
+  saveMessage.classList.remove("is-error");
+  saveMessage.textContent = "Die Lieder werden erkannt.";
+  extractedSongs = [];
+  songResults.replaceChildren();
+
+  try {
+    const songs = await extractSongs(selectedFile);
+    if (!songs.length) {
+      throw new Error("Es wurden keine passenden Überschriften erkannt. Benötigt werden echte PDF-Texte mit deutlich größerer, fetter Liedüberschrift; gescannte PDFs werden nicht unterstützt.");
+    }
+    extractedSongs = songs;
+    songs.forEach(addSongDownload);
+    document.querySelector("#extracted-section").hidden = false;
+    saveMessage.textContent = `${songs.length} ${songs.length === 1 ? "Lied wurde" : "Lieder wurden"} erkannt.`;
+  } catch (error) {
+    showError(error instanceof Error ? error.message : "Die PDF-Datei konnte nicht ausgewertet werden.");
+  } finally {
+    processButton.disabled = !selectedFile;
+    processButton.textContent = "Lieder erkennen";
+  }
+});
