@@ -39,8 +39,19 @@ function addSong(song, index) {
   const link = document.createElement("a");
   link.className = "song-link";
   link.href = `#${songId}`;
-  link.addEventListener("click", () => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    const target = document.getElementById(songId);
     setNavigationCollapsed(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!target) return;
+        const display = document.querySelector(".song-display");
+        const targetTop = display.scrollTop + target.getBoundingClientRect().top - display.getBoundingClientRect().top;
+        display.scrollTo({ top: targetTop, behavior: "smooth" });
+        history.replaceState(null, "", `#${songId}`);
+      });
+    });
   });
 
   const number = document.createElement("span");
